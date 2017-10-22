@@ -1,7 +1,9 @@
+#include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>       // for time, clock
 
+#define NUM_THREADS 2
 
 
 #define WHITE 1
@@ -185,7 +187,10 @@ void dfsVisit(int n, int** adjmat, node* inputnode,  node** nodelist){
 	// inputnode->f = timer;
 	
 	//update the value of largest compsize after every dfVisit
-	if(largestcompsize < compsize){largestcompsize = compsize;printf("\nLargest Comp Size updated to: %d",largestcompsize);}	
+	if(largestcompsize < compsize){
+		largestcompsize = compsize;
+		// printf("\nLargest Comp Size updated to: %d",largestcompsize);
+	}	
 	// printf("\n---[Compsize: %d]: Blackeded node number %d\n",compsize,inputnode->nodenumber);
 
 }
@@ -200,12 +205,83 @@ void dfs(int n, int** adjmat, node** nodelist){
 			compsize = 0;
 			
 			//start a new DFS search
-			printf("\nStarting DFS search at node number: %d\n",currentnode->nodenumber);
+			// printf("\nStarting DFS search at node number: %d\n",currentnode->nodenumber);
 			dfsVisit(n,adjmat,currentnode,nodelist);
 		}
 	}
 }
 
+
+void fill_adjmat(int n,double p,int** adjmat){
+
+	if(n < 0 || p > 1 || p < 0 || adjmat == NULL){printf("Could not fill up adjmat");exit(1);}	
+
+
+	int i, nthreads;  //shared variables
+
+	omp_set_num_threads(NUM_THREADS);
+
+	#pragma omp parallel
+	{
+		
+		int row, id, nthrds; //private variables
+
+		double threadC;
+
+		id = omp_get_thread_num();
+		nthrds = omp_get_num_threads();
+
+		double prob = p; //define locally so no need to keep requesting global variable
+
+		if(id == 0) nthreads = nthrds; //one thread writes nthreads
+
+		for(row = id; row < n; row+=nthrds) {//round robin loop through threads
+				for(int col = 0; col < row; col++){ //loop through columns
+						// printf("On the %d th row and %dth columnn with thread no %d\n",row,col,id);	
+						double uni = uniform();
+						// printf("\nrandom number is: %.2f\n",uni);
+						if (uni <= prob){
+							adjmat[row][col] = 1;
+						}
+						else {
+							adjmat[row][col] = 0;
+						}				
+				}
+
+		}
+		
+		// #pragma omp critical
+		// {
+		// C[id] = threadC;	
+		// }
+
+		// printf("Hello(%d,%d)\n",ID,num_threads);
+		// printf("World(%d,%d)\n",ID,num_threads);
+
+	}
+
+	//fill up the rest of the adj matrix outside the parallel computations
+
+	for(int row = 0; row < n; row++){ //loop through labels
+		for(int col = row; col < n; col++){ //loop through columns
+			
+			if(row == col){
+				adjmat[row][col] = 0; //diagonal elements are always 0
+			}
+			else {
+				adjmat[row][col] = adjmat[col][row]; //put the transpose elements in off diagonals
+			
+			}
+
+		}
+	} 	
+
+
+
+	// printf("Done!\n");
+
+
+}
 
 
 //rand uniform dist from engine
@@ -235,9 +311,8 @@ int main (int argc, const char * argv[])
     	printf("\nInvalid inputs: Make sure n > 0 and 0 <= p < 1\n");
     	exit(1);
     }
-printf
 
-    ("\nGenerating Adjacency Matrix with the following parameters:\n");
+	printf ("\nGenerating Adjacency Matrix with the following parameters:\n");
     printf("\nNumber of Nodes: %d\n",n);
 	printf("\nProbability of a link connecting two nodes: %.2f\n",p);
 
@@ -246,43 +321,16 @@ printf
 
 
 	//Build the Adjacency Matrix
-			//malloc space for and create an N*N matrix
-			int** adjmat = malloc_matrix(n,n);
+		//malloc space for and create an N*N matrix
+		int** adjmat = malloc_matrix(n,n);
 
-			if(adjmat == NULL){ //check that the above malloc worked
-				printf("\nUnable to reserve memory for adjacency matrix\n");
-				exit(1);
-			} 	
+		//fill up the adjmat
+		fill_adjmat(n,p,adjmat);
 
 
-			//fill the matrix
-			for(int row = 0; row < n; row++){ //loop through labels
-				for(int col = 0; col < row+1; col++){ //loop through columns
-					//diagonal elements are always 0
-					if(row == col){
-						adjmat[row][col] = 0;
-					}
-					else {
-						double uni = uniform();
-						// printf("\nrandom number is: %.2f\n",uni);
-						if (uni <= p){
-							adjmat[row][col] = 1;
-							adjmat[col][row] = 1;
-						}
-						else {
-							adjmat[row][col] = 0;
-							adjmat[col][row] = 0;
-						}				
-					}
-
-				}
-			} 
-
-
-
-			//print out adjmat 
-			printf("\nThe adjacency matrix:\n");
-			print_matrix(n,n,adjmat);
+	//print out adjmat 
+	printf("\nThe adjacency matrix:\n");
+	print_matrix(n,n,adjmat);
 
 	//Build the nodelist
     node** nodelist = init_nodelist(n);
