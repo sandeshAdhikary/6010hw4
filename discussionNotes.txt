@@ -1,0 +1,40 @@
+//To compile and run parallel code
+gcc main.c -std=c99
+
+//Since we're using OpenMP need to add the openmp flag
+
+
+// Computation time differences
+Adjacency Matrix: O(n^2): 
+Adjacency List: O(m) : number of edges
+
+
+
+Node {
+	int id
+	NeighborList* nl
+}
+
+
+NeighborList {
+	Node* node
+	NeighborList* nl
+}
+
+Graph {
+	int # of nodes
+	Node** nodelist
+	...
+	...
+}
+
+
+//Can be done by building a stack or a recursion. 
+// Recursion might make things simpler to code. But it will run into memory issues when dealing with very big graphs. Stacks are the better way to do it - since they are less likely to run into run time memory isssues.
+
+
+//Size of the largest component
+Component = you can get from one node to any other node
+size of the largest component = the component (sub-connected-graph) with the largest number of nodes
+
+Once a node is visited, it belongs to one component. It won't belong to any other component. It sounds like the way to do it is: start search at a node. Do depth-first search to go through all the nodes connected to it.So you have completed traversed the entire component. Record the size of the component, and also keep a record of all the nodes that have been touched when calculcating this. Now, look for another node that hasn't been touched yet. You will now repeat the depth-first search to find the size of the component that this one is connected to.
